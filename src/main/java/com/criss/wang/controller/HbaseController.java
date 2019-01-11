@@ -1,15 +1,17 @@
 package com.criss.wang.controller;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.criss.wang.entity.Employee;
 import com.criss.wang.service.HbaseService;
 
 @RestController
@@ -55,6 +57,53 @@ public class HbaseController {
 				return "表不存在";
 			}
 		} catch (Exception e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 向hbase插入单行数据
+	 *
+	 * @param tableName
+	 * @param rowKey
+	 * @param familyColumn
+	 * @param column
+	 * @param value
+	 * @return
+	 */
+	@RequestMapping(value = "/cell/data/{tableName}/{rowKey}/{familyColumn}/{column}/{value}", method = RequestMethod.POST)
+	public String addCellData(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "rowKey", required = false) String rowKey,
+			@PathVariable(value = "familyColumn", required = false) String familyColumn,
+			@PathVariable(value = "column", required = false) String column,
+			@PathVariable(value = "value", required = false) String value) {
+		try {
+			if (hService.isExist(tableName)) {
+				return hService.addCellData(tableName, rowKey, familyColumn, column, value);
+			} else {
+				return "表不存在";
+			}
+		} catch (Exception e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 向hbase插入多行数据
+	 * @param tableName
+	 * @param emps
+	 * @return
+	 */
+	@RequestMapping(value = "/row/data/{tableName}", method = RequestMethod.POST)
+	public String insertData(@PathVariable(value = "tableName", required = false) String tableName,
+			@RequestBody List<Employee> emps) {
+		try {
+			if(hService.isExist(tableName)) {
+				return hService.insertData(tableName, emps);
+			}else {
+				return "表不存在";
+			}
+		}catch(Exception e) {
 			return "程序异常";
 		}
 	}

@@ -1,6 +1,9 @@
 server:
   port: 9999
 
+logging:
+  config: classpath:logback-spring.xml  
+
 hbase:
   zookeeper:
     quorum: hadoop1:2183,hadoop2:2184,hadoop3:2185
