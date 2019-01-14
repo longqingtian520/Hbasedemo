@@ -90,6 +90,7 @@ public class HbaseController {
 
 	/**
 	 * 向hbase插入多行数据
+	 *
 	 * @param tableName
 	 * @param emps
 	 * @return
@@ -98,12 +99,12 @@ public class HbaseController {
 	public String insertData(@PathVariable(value = "tableName", required = false) String tableName,
 			@RequestBody List<Employee> emps) {
 		try {
-			if(hService.isExist(tableName)) {
+			if (hService.isExist(tableName)) {
 				return hService.insertData(tableName, emps);
-			}else {
+			} else {
 				return "表不存在";
 			}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			return "程序异常";
 		}
 	}
