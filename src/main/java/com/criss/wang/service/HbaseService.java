@@ -20,7 +20,10 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -303,6 +306,7 @@ public class HbaseService {
 
 	/**
 	 * 批量获取数据(当且仅当只有一个版本时)
+	 *
 	 * @param tableName
 	 * @param rowKeys
 	 * @return
@@ -312,36 +316,88 @@ public class HbaseService {
 	public String batchGet(String tableName, List<String> rowKeys) throws IOException, InterruptedException {
 		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
 		List<Employee> emps = new ArrayList<>();
-		Employee  employee = null;
+		Employee employee = null;
 		List<Get> gets = new ArrayList<>();
 		Get get = null;
-		for(String rowKey: rowKeys) {
+		for (String rowKey : rowKeys) {
 			get = new Get(Bytes.toBytes(rowKey));
 			gets.add(get);
 		}
 		Result[] results = table.get(gets);
-		for(int i= 0; i< results.length; i++) {
+		for (int i = 0; i < results.length; i++) {
 			employee = new Employee();
 			Result result = results[i];
 			List<Cell> cells = result.getColumnCells(Bytes.toBytes("personal"), Bytes.toBytes("city"));
-			for(Cell cell : cells) {
+			for (Cell cell : cells) {
 				employee.setCity(Bytes.toString(CellUtil.cloneValue(cell)));
 			}
 			List<Cell> cells1 = result.getColumnCells(Bytes.toBytes("personal"), Bytes.toBytes("name"));
-			for(Cell cell : cells1) {
+			for (Cell cell : cells1) {
 				employee.setName(Bytes.toString(CellUtil.cloneValue(cell)));
 			}
 			List<Cell> cells2 = result.getColumnCells(Bytes.toBytes("professional"), Bytes.toBytes("manager"));
-			for(Cell cell : cells2) {
+			for (Cell cell : cells2) {
 				employee.setManager(Bytes.toString(CellUtil.cloneValue(cell)));
 			}
 			List<Cell> cells3 = result.getColumnCells(Bytes.toBytes("professional"), Bytes.toBytes("salary"));
-			for(Cell cell : cells3) {
+			for (Cell cell : cells3) {
 				employee.setSalary(Bytes.toString(CellUtil.cloneValue(cell)));
 			}
 			emps.add(employee);
 		}
 		return objectMapper.writeValueAsString(emps);
+	}
+
+	/**
+	 * checkAndPut语法
+	 *
+	 * @param tableName
+	 * @param emp
+	 * @param rowKey
+	 * @param standard
+	 * @return
+	 * @throws IOException
+	 */
+	public String checkAndPut(String tableName, Employee emp, String rowKey, String standard) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Put put = new Put(Bytes.toBytes(rowKey));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("name"), Bytes.toBytes(emp.getName()));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("city"), Bytes.toBytes(emp.getCity()));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("manager"), Bytes.toBytes(emp.getManager()));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("salary"), Bytes.toBytes(emp.getSalary()));
+
+		table.checkAndPut(Bytes.toBytes(rowKey), Bytes.toBytes("personal"), Bytes.toBytes("name"), CompareOp.EQUAL,
+				Bytes.toBytes(standard), put);
+
+		return "success";
+	}
+
+	/**
+	 * scanner语法
+	 *
+	 * @param tableName
+	 * @param startRow
+	 * @param endRow
+	 * @return
+	 * @throws IOException
+	 */
+	public String scanData(String tableName, String startRow, String endRow) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		scan.setBatch(100);
+		scan.setCaching(1000);
+		if (!StringUtils.isEmpty(startRow)) {
+			scan.setStartRow(Bytes.toBytes(startRow));
+		}
+		if (!StringUtils.isEmpty(endRow)) {
+			scan.setStopRow(Bytes.toBytes(endRow));
+		}
+		ResultScanner resultScanner = table.getScanner(scan);
+		for (Result result : resultScanner) {
+			System.out.println(Bytes.toString(result.getRow()));
+		}
+
+		return "success";
 	}
 
 }

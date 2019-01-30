@@ -182,4 +182,43 @@ public class HbaseController {
 		}
 	}
 
+	/**
+	 * checkAndPut语法
+	 *
+	 * @param tableName
+	 * @param rowKey
+	 * @param standard
+	 * @param emp
+	 * @return
+	 */
+	@RequestMapping(value = "/check/put/{tableName}", method = RequestMethod.POST)
+	public String checkAndPut(@PathVariable(value = "tableName", required = false) String tableName,
+			@RequestParam(value = "rowKey", required = false) String rowKey,
+			@RequestParam(value = "standard", required = false) String standard, @RequestBody Employee emp) {
+		try {
+			return hService.checkAndPut(tableName, emp, rowKey, standard);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 扫描数据
+	 *
+	 * @param tableName
+	 * @param startRow
+	 * @param endRow
+	 * @return
+	 */
+	@RequestMapping(value = "/scanner", method = RequestMethod.GET)
+	public String scanData(@RequestParam(value = "tableName", required = false) String tableName,
+			@RequestParam(value = "startRow", required = false) String startRow,
+			@RequestParam(value = "endRow", required = false) String endRow) {
+		try {
+			return hService.scanData(tableName, startRow, endRow);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
 }
