@@ -221,4 +221,27 @@ public class HbaseController {
 		}
 	}
 
+	/**
+	 * Mutation语法
+	 *
+	 * @param tableName
+	 * @param rowKey
+	 * @param newAge
+	 * @param delName
+	 * @param modName
+	 * @return
+	 */
+	@RequestMapping(value = "/mutation/{tableName}", method = RequestMethod.POST)
+	public String mutatioin(@PathVariable(value = "tableName", required = false) String tableName,
+			@RequestParam(value = "rowKey", required = false) String rowKey,
+			@RequestParam(value = "newAge", required = false) String newAge,
+			@RequestParam(value = "delName", required = false) String delName,
+			@RequestParam(value = "modName", required = false) String modName) {
+		try {
+			return hService.mutationData(tableName, rowKey, newAge, delName, modName);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
 }

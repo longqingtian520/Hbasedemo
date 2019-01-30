@@ -21,6 +21,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
@@ -51,7 +52,7 @@ public class HbaseService {
 
 	private static final String SUCCESS = "success";
 
-	private static final String FAILURE = "failure";
+//	private static final String FAILURE = "failure";
 
 	@Autowired
 	private HbaseTemplate htemplate;
@@ -279,7 +280,7 @@ public class HbaseService {
 		}
 		Object[] object = new Object[puts.size()];
 		table.batch(puts, object);
-		return "success";
+		return SUCCESS;
 	}
 
 	/**
@@ -301,7 +302,7 @@ public class HbaseService {
 		}
 		Object[] object = new Object[deletes.size()];
 		table.batch(deletes, object);
-		return "success";
+		return SUCCESS;
 	}
 
 	/**
@@ -369,7 +370,7 @@ public class HbaseService {
 		table.checkAndPut(Bytes.toBytes(rowKey), Bytes.toBytes("personal"), Bytes.toBytes("name"), CompareOp.EQUAL,
 				Bytes.toBytes(standard), put);
 
-		return "success";
+		return SUCCESS;
 	}
 
 	/**
@@ -384,8 +385,8 @@ public class HbaseService {
 	public String scanData(String tableName, String startRow, String endRow) throws IOException {
 		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
 		Scan scan = new Scan();
-		scan.setBatch(100);
-		scan.setCaching(1000);
+		scan.setBatch(1); // 一次扫描数据
+		scan.setCaching(1000); // hbase扫描时的缓存
 		if (!StringUtils.isEmpty(startRow)) {
 			scan.setStartRow(Bytes.toBytes(startRow));
 		}
@@ -397,7 +398,43 @@ public class HbaseService {
 			System.out.println(Bytes.toString(result.getRow()));
 		}
 
-		return "success";
+		return SUCCESS;
+	}
+
+	/**
+	 * Mutation语法
+	 *
+	 * @param tableName
+	 * @param rowKey
+	 * @param delName
+	 * @param modName
+	 * @param newValue
+	 * @return
+	 * @throws IOException
+	 */
+	public String mutationData(String tableName, String rowKey, String newValue, String delName, String modName)
+			throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+
+		// 删除
+		Delete delete = new Delete(Bytes.toBytes(rowKey));
+		delete.addColumn(Bytes.toBytes("personal"), Bytes.toBytes(delName));
+
+		// 新增
+		Put put = new Put(Bytes.toBytes(rowKey));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("age"), Bytes.toBytes(newValue));
+
+		// 修改
+		Put edit = new Put(Bytes.toBytes(rowKey));
+		edit.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("name"), Bytes.toBytes(modName));
+
+		RowMutations rowMutation = new RowMutations(Bytes.toBytes(rowKey));
+		rowMutation.add(delete);
+		rowMutation.add(put);
+		rowMutation.add(edit);
+
+		table.mutateRow(rowMutation);
+		return SUCCESS;
 	}
 
 }
