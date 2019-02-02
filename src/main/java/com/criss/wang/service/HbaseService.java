@@ -24,7 +24,18 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.FamilyFilter;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.FilterList;
+import org.apache.hadoop.hbase.filter.FilterList.Operator;
+import org.apache.hadoop.hbase.filter.PageFilter;
+import org.apache.hadoop.hbase.filter.QualifierFilter;
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
+import org.apache.hadoop.hbase.filter.SubstringComparator;
+import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -52,7 +63,7 @@ public class HbaseService {
 
 	private static final String SUCCESS = "success";
 
-//	private static final String FAILURE = "failure";
+	// private static final String FAILURE = "failure";
 
 	@Autowired
 	private HbaseTemplate htemplate;
@@ -435,6 +446,180 @@ public class HbaseService {
 
 		table.mutateRow(rowMutation);
 		return SUCCESS;
+	}
+
+	/**
+	 * 值过滤器 等同于LIKE
+	 *
+	 * @param tableName
+	 * @param value
+	 * @return
+	 * @throws IOException
+	 */
+	public String valueFilter(String tableName, String value) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		Filter filter = new ValueFilter(CompareFilter.CompareOp.EQUAL, new SubstringComparator("wang"));
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+
+		for (Result result : rs) {
+			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
+			System.out.println(name);
+		}
+		rs.close();
+		return SUCCESS;
+	}
+
+	/**
+	 * 但列值过滤器
+	 *
+	 * @param tableName
+	 * @param value
+	 * @return
+	 * @throws IOException
+	 */
+	public String singleColumnValueFilter(String tableName, String value) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		Filter filter = new SingleColumnValueFilter(Bytes.toBytes("personnal"), Bytes.toBytes("name"),
+				CompareFilter.CompareOp.EQUAL, new SubstringComparator("wang"));
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+
+		for (Result result : rs) {
+			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
+			System.out.println(name);
+		}
+		rs.close();
+		return SUCCESS;
+	}
+
+	/**
+	 * 过滤器列表
+	 */
+	public String fliterList(String tableName, String value, boolean isAccurate) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		// 创建过滤器列表
+		FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
+
+		// 只有列族为personal的记录才放入结果集
+		Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
+				new BinaryComparator(Bytes.toBytes("personal")));
+		filterList.addFilter(familyFilter);
+
+		// 只有列为name的记录才放入结果集中
+		Filter columnFilter = new QualifierFilter(CompareFilter.CompareOp.EQUAL,
+				new BinaryComparator(Bytes.toBytes("name")));
+		filterList.addFilter(columnFilter);
+
+		// 只有值包含wang的记录才被放入结果集中
+		if (isAccurate) {
+			Filter valueFilter = new ValueFilter(CompareFilter.CompareOp.EQUAL,
+					new BinaryComparator(Bytes.toBytes(value)));
+			filterList.addFilter(valueFilter);
+		} else {
+			Filter valueFilter = new ValueFilter(CompareFilter.CompareOp.EQUAL, new SubstringComparator(value));
+			filterList.addFilter(valueFilter);
+		}
+
+		scan.setFilter(filterList);
+		ResultScanner rs = table.getScanner(scan);
+		for (Result result : rs) {
+			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
+			System.out.println(name);
+		}
+		rs.close();
+		return SUCCESS;
+	}
+
+	/**
+	 * 数字过滤 有问题 TODO
+	 *
+	 * @param tableName
+	 * @param value
+	 * @return
+	 * @throws IOException
+	 */
+	public String numberFilter(String tableName, int value) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		Filter filter = new SingleColumnValueFilter(Bytes.toBytes("professional"), Bytes.toBytes("salary"),
+				CompareFilter.CompareOp.GREATER, new BinaryComparator(Bytes.toBytes(value)));
+		scan.setFilter(filter);
+
+		ResultScanner rs = table.getScanner(scan);
+		for (Result result : rs) {
+			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
+			String num = Bytes.toString(result.getValue(Bytes.toBytes("professional"), Bytes.toBytes("salary")));
+			System.out.println(name + " : " + num);
+		}
+		rs.close();
+		return SUCCESS;
+	}
+
+	/**
+	 * 分页
+	 *
+	 * @param tableName
+	 * @param page
+	 * @return
+	 * @throws IOException
+	 */
+	public String pageFilter(String tableName, long page) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		Filter pageFilger = new PageFilter(page);
+		scan.setFilter(pageFilger);
+		ResultScanner rs = table.getScanner(scan);
+		for (Result result : rs) {
+			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
+			System.out.println(name);
+		}
+		return SUCCESS;
+	}
+
+	/**
+	 * 连续分页打印
+	 *
+	 * @param tableName
+	 * @param page
+	 * @return
+	 * @throws IOException
+	 */
+	public String sequencePageFilter(String tableName, long page) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		Filter pageFilter = new PageFilter(page);
+		scan.setFilter(pageFilter);
+		// 第一页
+		System.out.println("第一页数据");
+		ResultScanner rs = table.getScanner(scan);
+		byte[] rowKey = printResult(rs);
+		rs.close();
+
+		// 打印第二页
+		System.out.println("第二页数据");
+		byte[] startRowKey = Bytes.add(rowKey, new byte[1]);
+		scan.setStartRow(startRowKey);
+		rs = table.getScanner(scan);
+		printResult(rs);
+		rs.close();
+
+		return SUCCESS;
+	}
+
+	private byte[] printResult(ResultScanner rs) {
+		byte[] lastRowKey = null;
+		for (Result result : rs) {
+			byte[] rowKey = result.getRow();
+			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
+			String manager = Bytes.toString(result.getValue(Bytes.toBytes("professional"), Bytes.toBytes("manager")));
+			System.out.println(name + " : " + manager);
+			lastRowKey = rowKey;
+		}
+		return lastRowKey;
 	}
 
 }

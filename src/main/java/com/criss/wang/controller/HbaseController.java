@@ -244,4 +244,106 @@ public class HbaseController {
 		}
 	}
 
+	/**
+	 * 值过滤器
+	 *
+	 * @param tableName
+	 * @param name
+	 * @return
+	 */
+	@RequestMapping(value = "/value/filter/{tableName}/{name}", method = RequestMethod.GET)
+	public String valueFilter(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "name", required = false) String name) {
+		try {
+			return hService.valueFilter(tableName, name);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 单列值过滤器
+	 *
+	 * @param tableName
+	 * @param name
+	 * @return
+	 */
+	@RequestMapping(value = "/single/value/filter/{tableName}/{name}", method = RequestMethod.GET)
+	public String singleCloumnValueFilter(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "name", required = false) String name) {
+		try {
+			return hService.singleColumnValueFilter(tableName, name);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 过滤器列表
+	 *
+	 * @param tableName
+	 * @param name
+	 * @return
+	 */
+	@RequestMapping(value = "/filter/list/{tableName}/{name}/{isAccurate}", method = RequestMethod.GET)
+	public String fliterList(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "name", required = false) String name,
+			@PathVariable(value = "isAccurate", required = false) boolean isAccurate) {
+		try {
+			return hService.fliterList(tableName, name, isAccurate);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 过滤数字
+	 *
+	 * @param tableName
+	 * @param value
+	 * @return
+	 */
+	@RequestMapping(value = "/num/filter/{tableName}/{value}", method = RequestMethod.GET)
+	public String numberFilter(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "value", required = false) int value) {
+		try {
+			return hService.numberFilter(tableName, value);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 分页过滤
+	 *
+	 * @param tableName
+	 * @param value
+	 * @return
+	 */
+	@RequestMapping(value = "/page/filter/{tableName}/{value}", method = RequestMethod.GET)
+	public String pageFilter(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "value", required = false) long value) {
+		try {
+			return hService.pageFilter(tableName, value);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 连续分页
+	 *
+	 * @param tableName
+	 * @param value
+	 * @return
+	 */
+	@RequestMapping(value = "/sequence/page/filter/{tableName}/{value}", method = RequestMethod.GET)
+	public String sequencePageFilter(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "value", required = false) long value) {
+		try {
+			return hService.sequencePageFilter(tableName, value);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
 }
