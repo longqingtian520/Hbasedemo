@@ -446,4 +446,117 @@ public class HbaseController {
 		}
 	}
 
+	/**
+	 * 包含结尾过滤器
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/inclusive/stop", method = RequestMethod.GET)
+	public String inclusiveStopFilter() {
+		try {
+			return hService.inclusiveStopFilter();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 随机过滤器
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/random/{chance}", method = RequestMethod.GET)
+	public String randomRowFilter(@PathVariable(value = "chance", required = false) float chance) {
+		try {
+			return hService.randomRowFilter(chance);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 生成新的Hbase数据
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/generate/data", method = RequestMethod.POST)
+	public String generateHbaseData() {
+		try {
+			return hService.generateHbaseData();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 依赖列过滤器
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/dependent/filter", method = RequestMethod.GET)
+	public String dependentColumnFilter() {
+		try {
+			return hService.dependentColumnFilter();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 列前缀过滤器
+	 *
+	 * @param prefix
+	 * @return
+	 */
+	@RequestMapping(value = "/prefix/column/{prefix}", method = RequestMethod.GET)
+	public String prefixColumnFilter(@PathVariable(value = "prefix", required = false) String prefix) {
+		try {
+			return hService.prefixColumnFilter(prefix);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 多列前缀过滤器
+	 *
+	 * @param prex1
+	 * @param prex2
+	 * @return
+	 */
+	@RequestMapping(value = "/mutil/prefix/column", method = RequestMethod.GET)
+	public String multiColumnPrefixFilter(@RequestParam(value = "prefix1", required = false) String prefix1,
+			@RequestParam(value = "prefix2", required = false) String prefix2) {
+		try {
+			return hService.multiColumnPrefixFilter(prefix1, prefix2);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 列名过滤器
+	 */
+	@RequestMapping(value = "/key/column/filter", method = RequestMethod.GET)
+	public String KeyOnlyFilter() {
+		try {
+			return hService.KeyOnlyFilter();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 首次列键过滤器
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/count", method = RequestMethod.GET)
+	public String firstKeyOnlyFilter() {
+		try {
+			return hService.firstKeyOnlyFilter();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
 }

@@ -25,18 +25,25 @@ import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.DependentColumnFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.FilterList.Operator;
+import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.filter.FuzzyRowFilter;
+import org.apache.hadoop.hbase.filter.InclusiveStopFilter;
+import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 import org.apache.hadoop.hbase.filter.MultiRowRangeFilter;
 import org.apache.hadoop.hbase.filter.MultiRowRangeFilter.RowRange;
+import org.apache.hadoop.hbase.filter.MultipleColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
+import org.apache.hadoop.hbase.filter.RandomRowFilter;
 import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.SubstringComparator;
@@ -623,9 +630,10 @@ public class HbaseService {
 		for (Result result : rs) {
 			byte[] rowKey = result.getRow();
 			String row = Bytes.toString(rowKey);
+			String city = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("city")));
 			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
 			String manager = Bytes.toString(result.getValue(Bytes.toBytes("professional"), Bytes.toBytes("manager")));
-			System.out.println(row + " : " + name + " : " + manager);
+			System.out.println(row + " : " + city + " : " + name + " : " + manager);
 			lastRowKey = rowKey;
 		}
 		return lastRowKey;
@@ -782,7 +790,198 @@ public class HbaseService {
 		ResultScanner rs = table.getScanner(scan);
 		printResult(rs);
 		return SUCCESS;
+	}
 
+	/**
+	 * 包含结尾过滤器
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String inclusiveStopFilter() throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan(Bytes.toBytes("1548825906109"));
+		Filter filter = new InclusiveStopFilter(Bytes.toBytes("1549070900152"));
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+		printResult(rs);
+		return SUCCESS;
+	}
+
+	/**
+	 * 随机行过滤器
+	 *
+	 * @param chance
+	 * @return
+	 * @throws IOException
+	 */
+	public String randomRowFilter(float chance) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+		Filter filter = new RandomRowFilter(new Float(chance));
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+		printResult(rs);
+		return SUCCESS;
+	}
+
+	// 列过滤器
+
+	/**
+	 * 新造一批数据，指定时间戳
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String generateHbaseData() throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+
+		List<Put> puts = new ArrayList<>();
+
+		Put put = new Put(Bytes.toBytes("row1"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("city"), 1L, Bytes.toBytes("南京"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("name"), 1L, Bytes.toBytes("xiaoming"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("manager"), 1L, Bytes.toBytes("wuli"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("salary"), 1L, Bytes.toBytes(10000));
+		puts.add(put);
+
+		put = new Put(Bytes.toBytes("row2"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("city"), 1L, Bytes.toBytes("nanjing"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("name"), 1L, Bytes.toBytes("songjiang"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("manager"), 1L, Bytes.toBytes("zhengzhi"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("salary"), 1L, Bytes.toBytes(12000));
+		puts.add(put);
+
+		put = new Put(Bytes.toBytes("row3"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("city"), 1L, Bytes.toBytes("xining"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("name"), 1L, Bytes.toBytes("huakui"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("manager"), 1L, Bytes.toBytes("wushu"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("salary"), 1L, Bytes.toBytes(12500));
+		puts.add(put);
+
+		put = new Put(Bytes.toBytes("row4"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("city"), 1L, Bytes.toBytes("changsha"));
+		put.addColumn(Bytes.toBytes("personal"), Bytes.toBytes("name"), 1L, Bytes.toBytes("luzhishen"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("manager"), 1L, Bytes.toBytes("shaolinsi"));
+		put.addColumn(Bytes.toBytes("professional"), Bytes.toBytes("salary"), 1L, Bytes.toBytes(12000));
+		puts.add(put);
+
+		table.put(puts);
+
+		return SUCCESS;
+	}
+
+	/**
+	 * 依赖列过滤器
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String dependentColumnFilter() throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+		Filter filter = new DependentColumnFilter(Bytes.toBytes("personal"), Bytes.toBytes("name"));
+		scan.setFilter(filter);
+
+		ResultScanner rs = table.getScanner(scan);
+		printResult(rs);
+
+		return SUCCESS;
+	}
+
+	/**
+	 * 列前缀过滤器
+	 *
+	 * @param prefix
+	 * @return
+	 * @throws IOException
+	 */
+	public String prefixColumnFilter(String prefix) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+		ColumnPrefixFilter filter = new ColumnPrefixFilter(Bytes.toBytes(prefix));
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+
+		printResult(rs);
+		return SUCCESS;
+	}
+
+	/**
+	 * 多列前缀过滤器
+	 *
+	 * @param prex1
+	 * @param prex2
+	 * @return
+	 * @throws IOException
+	 */
+	public String multiColumnPrefixFilter(String prex1, String prex2) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+		byte[][] prefix = new byte[2][];
+		prefix[0] = Bytes.toBytes(prex1);
+		prefix[1] = Bytes.toBytes(prex2);
+		MultipleColumnPrefixFilter filter = new MultipleColumnPrefixFilter(prefix);
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+		printResult(rs);
+
+		return SUCCESS;
+	}
+
+	/**
+	 * 列明过滤器
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String KeyOnlyFilter() throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+
+		KeyOnlyFilter filter = new KeyOnlyFilter();
+		scan.setFilter(filter);
+
+		ResultScanner rs = table.getScanner(scan);
+		for (Result result : rs) {
+			String rowKey = Bytes.toString(result.getRow());
+			List<Cell> cells = result.listCells();
+			List<String> columnNames = new ArrayList<>();
+			columnNames.add(rowKey);
+			for (Cell cell : cells) {
+				columnNames.add(Bytes.toString(CellUtil.cloneQualifier(cell)));
+			}
+			System.out.println(objectMapper.writeValueAsString(columnNames));
+			columnNames.clear();
+		}
+		return SUCCESS;
+	}
+
+	/**
+	 * 首次列过滤器+
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String firstKeyOnlyFilter() throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf("uav_fly_data"));
+
+		long begintime = System.currentTimeMillis();
+
+		Scan scan = new Scan();
+		FirstKeyOnlyFilter filter = new FirstKeyOnlyFilter();
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+
+		int count = 1;
+		for (Result result : rs) {
+			count++;
+		}
+
+		long endtime = System.currentTimeMillis();
+		long haoshi = (endtime - begintime) / 1000l;
+		System.out.println("总共有：" + count + " 行数据， 耗时：" + haoshi + " 秒");
+		return SUCCESS;
 	}
 
 }
