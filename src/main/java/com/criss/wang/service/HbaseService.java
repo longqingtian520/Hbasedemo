@@ -31,13 +31,19 @@ import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.FilterList.Operator;
+import org.apache.hadoop.hbase.filter.FuzzyRowFilter;
+import org.apache.hadoop.hbase.filter.MultiRowRangeFilter;
+import org.apache.hadoop.hbase.filter.MultiRowRangeFilter.RowRange;
 import org.apache.hadoop.hbase.filter.PageFilter;
+import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
+import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.SubstringComparator;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +66,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class HbaseService {
 
 	private static final Logger logger = LoggerFactory.getLogger(HbaseService.class);
+
+	private static final String TABLE_NAME = "test_crisstb";
 
 	private static final String SUCCESS = "success";
 
@@ -614,12 +622,167 @@ public class HbaseService {
 		byte[] lastRowKey = null;
 		for (Result result : rs) {
 			byte[] rowKey = result.getRow();
+			String row = Bytes.toString(rowKey);
 			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
 			String manager = Bytes.toString(result.getValue(Bytes.toBytes("professional"), Bytes.toBytes("manager")));
-			System.out.println(name + " : " + manager);
+			System.out.println(row + " : " + name + " : " + manager);
 			lastRowKey = rowKey;
 		}
 		return lastRowKey;
+	}
+
+	/**
+	 * 探究过滤器顺序对结果集的影响 ==== 是因为各个过滤器在过滤器列表内的执行是有先后顺序
+	 *
+	 * @param talbeName
+	 * @param page
+	 * @return
+	 * @throws IOException
+	 */
+	public String listFilterOrder(String tableName, String value, long page) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		List<Filter> filters = new ArrayList<>();
+
+		// 分页过滤
+		Filter pageFilter = new PageFilter(page);
+		filters.add(pageFilter);
+
+		// 单值过滤
+		Filter valueFilter = new SingleColumnValueFilter(Bytes.toBytes("personal"), Bytes.toBytes("name"),
+				CompareFilter.CompareOp.EQUAL, new SubstringComparator(value));
+		filters.add(valueFilter);
+
+		FilterList filterList = new FilterList(filters);
+		scan.setFilter(filterList);
+
+		ResultScanner rs = table.getScanner(scan);
+		printResult(rs);
+
+		return SUCCESS;
+	}
+
+	/**
+	 * And OR过滤
+	 *
+	 * @param tableName
+	 * @param OneCity
+	 * @param TwoCity
+	 * @param name
+	 * @return
+	 * @throws IOException
+	 */
+	public String listFilterAndOr(String tableName, String OneCity, String TwoCity, String name) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+
+		FilterList innerFilter = new FilterList(Operator.MUST_PASS_ONE);
+
+		Filter qdFilter = new SingleColumnValueFilter(Bytes.toBytes("personal"), Bytes.toBytes("city"),
+				CompareFilter.CompareOp.EQUAL, Bytes.toBytes(OneCity));
+		innerFilter.addFilter(qdFilter);
+
+		Filter bjFilter = new SingleColumnValueFilter(Bytes.toBytes("personal"), Bytes.toBytes("city"),
+				CompareFilter.CompareOp.EQUAL, Bytes.toBytes(TwoCity));
+		innerFilter.addFilter(bjFilter);
+
+		FilterList outerFilter = new FilterList(Operator.MUST_PASS_ALL);
+
+		outerFilter.addFilter(innerFilter);
+		Filter nameFilter = new SingleColumnValueFilter(Bytes.toBytes("personal"), Bytes.toBytes("name"),
+				CompareFilter.CompareOp.EQUAL, Bytes.toBytes(name));
+		outerFilter.addFilter(nameFilter);
+
+		scan.setFilter(outerFilter);
+
+		ResultScanner rs = table.getScanner(scan);
+
+		printResult(rs);
+
+		return SUCCESS;
+	}
+
+	/**
+	 * 行键过滤器
+	 *
+	 * @param rowKey
+	 * @return
+	 * @throws IOException
+	 */
+	public String rowFilter(String rowKey) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+		Filter rowFilter = new RowFilter(CompareFilter.CompareOp.GREATER, new BinaryComparator(Bytes.toBytes(rowKey)));
+
+		scan.setFilter(rowFilter);
+		ResultScanner rs = table.getScanner(scan);
+		printResult(rs);
+		return SUCCESS;
+	}
+
+	/**
+	 * MutilRowRange多行范围过滤器
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String rowRangeFilter() throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+
+		List<RowRange> list = new ArrayList<>();
+
+		RowRange rowRang1 = new RowRange("1548825906109", true, "1549070899150", true);
+		RowRange rowRange2 = new RowRange("1549071063328", true, "1549071065329", true);
+		list.add(rowRang1);
+		list.add(rowRange2);
+		Filter filter = new MultiRowRangeFilter(list);
+
+		scan.setFilter(filter);
+		ResultScanner rs = table.getScanner(scan);
+
+		printResult(rs);
+		return SUCCESS;
+	}
+
+	/**
+	 * 行键前缀过滤器
+	 *
+	 * @param prefix
+	 * @return
+	 * @throws IOException
+	 */
+	public String prefixRowFilter(String prefix) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+		PrefixFilter prefixFilter = new PrefixFilter(Bytes.toBytes(prefix));
+		scan.setFilter(prefixFilter);
+		ResultScanner rs = table.getScanner(scan);
+
+		printResult(rs);
+		return SUCCESS;
+	}
+
+	/**
+	 * 行键模糊匹配
+	 *
+	 * @param fuzzyRow
+	 * @return
+	 * @throws IOException
+	 */
+	public String fuzzyRowFilter(String fuzzyRow) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(TABLE_NAME));
+		Scan scan = new Scan();
+		List<Pair<byte[], byte[]>> list = new ArrayList<>();
+		Pair<byte[], byte[]> pair = new Pair<byte[], byte[]>(Bytes.toBytesBinary(fuzzyRow),
+				new byte[] { 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0 });
+		list.add(pair);
+		FuzzyRowFilter fuzzyFilter = new FuzzyRowFilter(list);
+		scan.setFilter(fuzzyFilter);
+		ResultScanner rs = table.getScanner(scan);
+		printResult(rs);
+		return SUCCESS;
+
 	}
 
 }

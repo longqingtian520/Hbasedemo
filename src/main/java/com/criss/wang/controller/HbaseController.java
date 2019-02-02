@@ -346,4 +346,104 @@ public class HbaseController {
 			return "程序异常";
 		}
 	}
+
+	/**
+	 * 过滤器顺序
+	 *
+	 * @param tableName
+	 * @param value
+	 * @param page
+	 * @return
+	 */
+	@RequestMapping(value = "/order/filter/list/{tableName}/{value}/{page}", method = RequestMethod.GET)
+	public String listFilterOrder(@PathVariable(value = "tableName", required = false) String tableName,
+			@PathVariable(value = "value", required = false) String value,
+			@PathVariable(value = "page", required = false) long page) {
+		try {
+			return hService.listFilterOrder(tableName, value, page);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * And OR 过滤
+	 *
+	 * @param tableName
+	 * @param oneCity
+	 * @param twoCity
+	 * @param name
+	 * @return
+	 */
+	@RequestMapping(value = "/logic/list/filter/{tableName}")
+	public String listFilterAndOr(@PathVariable(value = "tableName", required = false) String tableName,
+			@RequestParam(value = "oneCity", required = false) String oneCity,
+			@RequestParam(value = "twoCity", required = false) String twoCity,
+			@RequestParam(value = "name", required = false) String name) {
+		try {
+			return hService.listFilterAndOr(tableName, oneCity, twoCity, name);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 行键过滤器
+	 *
+	 * @param rowKey
+	 * @return
+	 */
+	@RequestMapping(value = "/row/filter/{rowKey}", method = RequestMethod.GET)
+	public String rowFilter(@PathVariable(value = "rowKey", required = false) String rowKey) {
+		try {
+			return hService.rowFilter(rowKey);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 多行过滤器
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/mutil/row/range", method = RequestMethod.GET)
+	public String mutilRowRangeFilter() {
+		try {
+			return hService.rowRangeFilter();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 前缀过滤器
+	 *
+	 * @param prefix
+	 * @return
+	 */
+	@RequestMapping(value = "/prefix/{prefix}", method = RequestMethod.GET)
+	public String prefixFilter(@PathVariable(value = "prefix", required = false) String prefix) {
+		try {
+			return hService.prefixRowFilter(prefix);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 行键模糊匹配
+	 *
+	 * @param fuzzy
+	 * @return
+	 */
+	@RequestMapping(value = "/fuzzy", method = RequestMethod.GET)
+	public String fuzzyFilter(@RequestParam(value = "rowKey", required = false) String rowKey) {
+		try {
+			return hService.fuzzyRowFilter(rowKey);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
 }
