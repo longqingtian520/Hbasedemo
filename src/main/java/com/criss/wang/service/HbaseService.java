@@ -3,18 +3,25 @@ package com.criss.wang.service;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -49,6 +56,7 @@ import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.SubstringComparator;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
@@ -107,6 +115,38 @@ public class HbaseService {
 		Connection conn = initHbase();
 		HBaseAdmin admin = (HBaseAdmin) conn.getAdmin();
 		return admin.tableExists(tableName);
+	}
+
+	/**
+	 * 查询表中的数据量
+	 *
+	 * @param tableName
+	 * @return
+	 * @throws IOException
+	 */
+	public String getRowNumsWithTable(String tableName) throws IOException {
+
+		long start = System.currentTimeMillis();
+
+		Connection conn = initHbase();
+		Table table = conn.getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		Filter filter = new FirstKeyOnlyFilter();
+		scan.setFilter(filter);
+
+		ResultScanner result = table.getScanner(scan);
+		int count = 0;
+		for (Result r : result) {
+			count++;
+		}
+
+		result.close();
+
+		long end = System.currentTimeMillis();
+
+		System.out.println("表，一共有 " + count + " 条数据， 总耗时：" + (end - start) / 1000);
+
+		return count + "";
 	}
 
 	/**
@@ -205,11 +245,14 @@ public class HbaseService {
 		// 创建Hbase表对象
 		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
 		Put put = new Put(Bytes.toBytes(rowKey));
+		// put.setWriteToWAL(false); // 关闭写入Hlog ，该方法已被弃用，如下面那行代码
+		// put.setDurability(Durability.SKIP_WAL); // 关闭写入Hlog
+		put.setDurability(Durability.ASYNC_WAL); // 异步写入HLog， Hlog是WAL的实现类
 		put.addColumn(Bytes.toBytes(familyColumn), Bytes.toBytes(column), Bytes.toBytes(value));
 		table.put(put);
 		logger.info("insert data to hbase successed");
 		return "insert data to hbase successed";
-	}
+	}                                                                                                                                                                                                                                                                                                                                              
 
 	/**
 	 * 多行插入
@@ -487,7 +530,7 @@ public class HbaseService {
 	}
 
 	/**
-	 * 但列值过滤器
+	 * 单列值过滤器
 	 *
 	 * @param tableName
 	 * @param value
@@ -786,6 +829,10 @@ public class HbaseService {
 				new byte[] { 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0 });
 		list.add(pair);
 		FuzzyRowFilter fuzzyFilter = new FuzzyRowFilter(list);
+
+		Filter fuzzy = new FuzzyRowFilter(Arrays.asList(new Pair<byte[], byte[]>(Bytes.toBytesBinary(fuzzyRow),
+				new byte[] { 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0 })));
+
 		scan.setFilter(fuzzyFilter);
 		ResultScanner rs = table.getScanner(scan);
 		printResult(rs);
@@ -930,7 +977,7 @@ public class HbaseService {
 	}
 
 	/**
-	 * 列明过滤器
+	 * 列名过滤器
 	 *
 	 * @return
 	 * @throws IOException
@@ -984,4 +1031,69 @@ public class HbaseService {
 		return SUCCESS;
 	}
 
+	/**
+	 * 获取RegionServer 和 对应的region列表
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String getRegions() throws IOException {
+		Admin admin = initHbase().getAdmin();
+		Collection<ServerName> serverNames = admin.getClusterStatus().getServers();
+		Iterator<ServerName> iterator = serverNames.iterator();
+		while (iterator.hasNext()) {
+			ServerName serverName = iterator.next();
+			System.out.println("\n RegionServer ：" + serverName.getServerName() + ", 拥有以下Region：");
+
+			List<HRegionInfo> regions = admin.getOnlineRegions(serverName);
+			for (HRegionInfo region : regions) {
+				System.out.println(region.getRegionNameAsString());
+			}
+		}
+
+		System.out.println("=========================================================");
+
+		String master = admin.getClusterStatus().getMaster().getServerName();
+		String ip = admin.getClusterStatus().getMaster().getHostAndPort();
+		System.out.println("master: " + master + ", ip : " + ip);
+
+		return SUCCESS;
+	}
+
+	/**
+	 * 生成快照
+	 *
+	 * @return
+	 * @throws IOException
+	 */
+	public String createSnapshot() throws IOException {
+		Admin admin = initHbase().getAdmin();
+		admin.snapshot("test_snapshot", TableName.valueOf(TABLE_NAME));
+		return SUCCESS;
+	}
+
+	/**
+	 * 操作快照
+	 *
+	 * @param snapeshot
+	 * @return
+	 * @throws IOException
+	 */
+	public String operateSnapshot(String snapeshot) throws IOException {
+		Admin admin = initHbase().getAdmin();
+		// 列出所有快照
+		List<SnapshotDescription> snapshots = admin.listSnapshots();
+		System.out.println("快照数量：" + snapshots.size());
+		for (SnapshotDescription sd : snapshots) {
+			System.out.println(sd.getName());
+		}
+
+		// 快照回复数据 步骤：1、先禁用数据表；2、快照恢复；3、启用数据表
+		admin.disableTable(TableName.valueOf(TABLE_NAME));
+		admin.restoreSnapshot("test_snapshot");
+		admin.enableTable(TableName.valueOf(TABLE_NAME));
+
+		System.out.println("成功");
+		return SUCCESS;
+	}
 }

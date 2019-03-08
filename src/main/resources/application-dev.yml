@@ -6,4 +6,6 @@ logging:
 
 hbase:
   zookeeper:
-    quorum: hadoop1:2183,hadoop2:2184,hadoop3:2185
+    quorum: office-server:2181
+#    quorum: criss-server:2181
+    #port: 2186

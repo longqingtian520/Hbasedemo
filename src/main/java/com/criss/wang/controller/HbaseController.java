@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,11 +31,31 @@ public class HbaseController {
 	 */
 	@RequestMapping(value = "/exist", method = RequestMethod.GET)
 	public String getExistData() throws ZooKeeperConnectionException, IOException {
-		if (hService.isExist("test_crisstb")) {
+		if (hService.isExist("test_crisstb1")) {
 			return "存在";
 		} else {
 			return "不存在";
 		}
+	}
+
+	/**
+	 * 查询表中的总行数
+	 *
+	 * @param tableName
+	 * @return
+	 */
+	@GetMapping(path = "/row/count/{tableName}")
+	public String getRowNums(@PathVariable(value = "tableName") String tableName) {
+		try {
+			if (hService.isExist(tableName)) {
+				return hService.getRowNumsWithTable(tableName);
+			}
+			return "表不存在";
+		}catch(Exception e) {
+			e.printStackTrace();
+			return "程序异常";
+		}
+
 	}
 
 	/**
@@ -559,4 +580,48 @@ public class HbaseController {
 			return "程序异常";
 		}
 	}
+
+	/**
+	 * 获取Region列表
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/region/list", method = RequestMethod.GET)
+	public String getRegions() {
+		try {
+			return hService.getRegions();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 创建快照表
+	 *
+	 * @return
+	 */
+	@RequestMapping(value = "/create/snapshot", method = RequestMethod.POST)
+	public String createSnapshot() {
+		try {
+			return hService.createSnapshot();
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
+	/**
+	 * 操作快照
+	 *
+	 * @param tableName
+	 * @return
+	 */
+	@RequestMapping(value = "/snapshot", method = RequestMethod.GET)
+	public String operateSnapshot(@RequestParam(value = "tableName", required = false) String tableName) {
+		try {
+			return hService.operateSnapshot(tableName);
+		} catch (IOException e) {
+			return "程序异常";
+		}
+	}
+
 }

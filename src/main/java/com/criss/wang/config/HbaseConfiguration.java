@@ -11,12 +11,12 @@ public class HbaseConfiguration {
 
 	@Bean
 	public HbaseTemplate hbaseTemplate(@Value("${hbase.zookeeper.quorum}") String quorum
-	// @Value("${hbase.zookeeper.port}") String port
+//	 ,@Value("${hbase.zookeeper.port}") String port
 	) {
 		HbaseTemplate hbaseTemplate = new HbaseTemplate();
 		org.apache.hadoop.conf.Configuration conf = HBaseConfiguration.create();
 		conf.set("hbase.zookeeper.quorum", quorum);
-		// conf.set("hbase.zookeeper.port", port);
+//		 conf.set("hbase.zookeeper.port", port);
 		hbaseTemplate.setConfiguration(conf);
 		hbaseTemplate.setAutoFlush(true);
 		return hbaseTemplate;

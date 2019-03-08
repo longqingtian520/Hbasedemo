@@ -9,9 +9,22 @@ import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import com.criss.wang.util.HbaseUtils;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class HbasedemoApplicationTests {
+
+	public static void main(String[] args) {
+		System.out.println(test1());
+	}
+
+
+	public static String test1() {
+		byte[] bytes = HbaseUtils.asColName("12354545", "kdjfkdfj");
+		return new String(bytes);
+	}
+
 
 
 
@@ -22,7 +35,7 @@ public class HbasedemoApplicationTests {
 		urlc.setDoOutput(true);
 		urlc.setRequestMethod("POST");
 		urlc.setRequestProperty("Accept", "application/x-protobuf");
-		urlc.setRequestProperty("Content-Type", "application/x-protobuf");
+		urlc.setRequestProperty("Content-Type", "application/x-protobuf");          
 
 		urlc.connect();
 
