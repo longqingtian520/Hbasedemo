@@ -311,7 +311,7 @@ public class HbaseController {
 			@PathVariable(value = "name", required = false) String name,
 			@PathVariable(value = "isAccurate", required = false) boolean isAccurate) {
 		try {
-			return hService.fliterList(tableName, name, isAccurate);
+			return hService.fliterList1(tableName, name, isAccurate);
 		} catch (IOException e) {
 			return "程序异常";
 		}

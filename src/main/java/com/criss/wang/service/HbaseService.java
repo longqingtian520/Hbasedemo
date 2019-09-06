@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -252,7 +253,7 @@ public class HbaseService {
 		table.put(put);
 		logger.info("insert data to hbase successed");
 		return "insert data to hbase successed";
-	}                                                                                                                                                                                                                                                                                                                                              
+	}
 
 	/**
 	 * 多行插入
@@ -517,7 +518,7 @@ public class HbaseService {
 	public String valueFilter(String tableName, String value) throws IOException {
 		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
 		Scan scan = new Scan();
-		Filter filter = new ValueFilter(CompareFilter.CompareOp.EQUAL, new SubstringComparator("wang"));
+		Filter filter = new ValueFilter(CompareFilter.CompareOp.EQUAL, new SubstringComparator(value));
 		scan.setFilter(filter);
 		ResultScanner rs = table.getScanner(scan);
 
@@ -541,7 +542,7 @@ public class HbaseService {
 		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
 		Scan scan = new Scan();
 		Filter filter = new SingleColumnValueFilter(Bytes.toBytes("personnal"), Bytes.toBytes("name"),
-				CompareFilter.CompareOp.EQUAL, new SubstringComparator("wang"));
+				CompareFilter.CompareOp.EQUAL, new SubstringComparator(value));
 		scan.setFilter(filter);
 		ResultScanner rs = table.getScanner(scan);
 
@@ -587,6 +588,48 @@ public class HbaseService {
 		for (Result result : rs) {
 			String name = Bytes.toString(result.getValue(Bytes.toBytes("personal"), Bytes.toBytes("name")));
 			System.out.println(name);
+		}
+		rs.close();
+		return SUCCESS;
+	}
+
+	/**
+	 * 过滤器列表
+	 */
+	public String fliterList1(String tableName, String value, boolean isAccurate) throws IOException {
+		HTable table = (HTable) initHbase().getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+
+		// 开始位置
+		scan.setStartRow(Bytes.toBytes("0000000000000000000000000000A20000110373:9223370469191546807"));
+		// 结束位置
+		scan.setStopRow(Bytes.toBytes("0000000000000000000000000000A20000110373:9223370469191554807"));
+
+		// 创建过滤器列表
+		FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
+		// 只有列族为f1的记录才放入结果集
+		Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
+				new BinaryComparator(Bytes.toBytes("f1")));
+		filterList.addFilter(familyFilter);
+		// 只有列前缀为station的记录才放入结果集中
+		ColumnPrefixFilter filter = new ColumnPrefixFilter(Bytes.toBytes("station"));
+		scan.setFilter(filter);
+		scan.setFilter(filterList);
+
+		ResultScanner rs = table.getScanner(scan);
+		for (Result result : rs) {
+			byte[] rowKey = result.getRow();
+			String row = Bytes.toString(rowKey);
+			System.out.println(row);
+			// 获取f1列族下的所有列名称
+			Map<byte[], byte[]> familyMap = result.getFamilyMap(Bytes.toBytes("f1"));
+			for (Map.Entry<byte[], byte[]> entry : familyMap.entrySet()) {
+				String colName = Bytes.toString(entry.getKey());
+				System.out.println("列名：" + colName);
+
+				byte[] bag = result.getValue(Bytes.toBytes("f1"), Bytes.toBytes(colName));
+				System.out.println(bag.length);
+			}
 		}
 		rs.close();
 		return SUCCESS;
